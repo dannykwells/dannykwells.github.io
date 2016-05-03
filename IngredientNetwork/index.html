@@ -1,0 +1,175 @@
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+<div id="area2">
+<style>
+
+.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+.link {
+  stroke: #999;
+  stroke-opacity: .2;
+}
+
+.d3-tip {
+  line-height: 1;
+  font: 14px sans-serif;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 2px;
+}
+
+ /*Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font: 14px sans-serif;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+
+</style>
+ <g transform="translate(0,1200)">
+<script>
+
+  
+var width = 1200,
+    height = 900;
+
+var color = d3.scale.category10();
+var opacity = 0.2
+
+var force = d3.layout.force()
+    .gravity(1)
+    .charge(-1500)
+    .linkDistance(5)
+    .size([width, height]);
+
+
+
+var svg = d3.select("#area2").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var tip = d3.tip()
+  .attr('class', 'd3-tip')
+  .offset([-10, 0])
+  .html(function(d) {
+    return "Ingredient: <span style='color:" + color(d.class) +"''>" + d.name + "</span>"
+  })
+
+
+svg.call(tip);
+
+
+d3.json("https://s3-us-west-2.amazonaws.com/ingredientnetwork/IngredientNetwork3.json", function(error, graph) {
+  if (error) throw error;
+
+  force
+      .nodes(graph.nodes)
+      .links(graph.links)
+      .start();
+
+  var link = svg.selectAll(".link")
+      .data(graph.links)
+    .enter().append("line")
+      .attr("class", "link")
+      .style("stroke-width", function(d) { return d.weight/2; });
+
+  var node = svg.selectAll(".node")
+      .data(graph.nodes)
+    .enter().append("circle")
+      .attr("class", "node")
+      .attr("r", function(d) { return Math.sqrt(d.count)+2; })
+      .style("fill", function(d) { return color(d.class); })
+      .on('mouseover', function(d){
+        tip.show(d);
+        link.style('stroke-opacity', function(l) {
+    if (d === l.source || d === l.target)
+      return 1;
+    else
+      return opacity;
+      })})
+       .on('mouseout', function(d) {
+        tip.hide(d);
+        link.style('stroke-opacity', opacity
+      )})
+       
+
+
+
+
+//This is supposed to de-randomize the node positions.
+// var n = node.length; node.forEach(function(d, i) {
+//     d.x = d.y = width / n * i; });
+
+//   node.append("title")
+//       .text(function(d) { return d.id; });
+
+
+//Keep all nodes in the box.
+var radius = 20
+  force.on("tick", function() {
+    node
+    .each(collide(.1))
+    .attr("cx", function(d) { return d.x = Math.max(radius, Math.min(width - radius, d.x)); })
+        .attr("cy", function(d) { return d.y = Math.max(radius, Math.min(height - radius, d.y)); });
+
+
+
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+        });
+
+  function collide(alpha) {
+  var quadtree = d3.geom.quadtree(node);
+  return function(d) {
+    var r = Math.sqrt(d.count)+40
+        nx1 = d.x - r,
+        nx2 = d.x + r,
+        ny1 = d.y - r,
+        ny2 = d.y + r;
+    quadtree.visit(function(quad, x1, y1, x2, y2) {
+      if (quad.point && (quad.point !== d)) {
+        var x = d.x - quad.point.x,
+            y = d.y - quad.point.y,
+            l = Math.sqrt(x * x + y * y),
+            r = Math.sqrt(d.count)+40
+        if (l < r) {
+          l = (l - r) / l * alpha;
+          d.x -= x *= l;
+          d.y -= y *= l;
+          quad.point.x += x;
+          quad.point.y += y;
+        }
+      }
+
+      var out = x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+      return out
+    });
+  };
+}
+   
+
+});
+
+</script>
+  </g>
+</div>

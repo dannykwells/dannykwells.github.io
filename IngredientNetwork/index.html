@@ -51,6 +51,8 @@ var width = 1200,
     height = 900;
 
 var color = d3.scale.category10();
+  color.domain(["Vegetable", "Fruit", "Meat","Grain", "Dairy", "Herb-Spice-Etc"])
+
 var opacity = 0.2
 
 var force = d3.layout.force()
